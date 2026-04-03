@@ -105,12 +105,73 @@ OUTPUT:
 - Always include "warnings" list (may be empty []).
 """
 
+_FREELANCE_EXTRACTION_GUIDANCE = """
+FREELANCE-SPECIFIC EXTRACTION RULES (apply ONLY when posting kind is "freelance"):
+
+1. SKILLS FROM FULL TEXT.
+   Freelance posts rarely have labeled "Requirements" or "Skills" sections.
+   Scan the ENTIRE post body for technologies, tools, platforms, and
+   frameworks mentioned by the client. Extract these as skills.required[].
+   Examples: "Cursor", "Claude Code", "MCPs", "TypeScript", "Supabase",
+   "pgvector", "Make.com", "Airtable", "Ollama", "Google Forms".
+
+2. NO REQUIRED/PREFERRED SPLIT — DEFAULT TO REQUIRED.
+   If the post does not distinguish required from preferred/nice-to-have,
+   place ALL identified skills in skills.required[].
+   Add a warning: "no_required_preferred_distinction: all skills placed in required".
+   Only populate skills.preferred[] if the post explicitly uses qualifiers
+   like "nice to have", "bonus", "a plus", or "preferred".
+
+3. DELIVERABLES AS RESPONSIBILITIES.
+   Freelance posts often describe what the client wants built rather than
+   listing candidate responsibilities. Treat stated deliverables, project
+   scope items, and expected outputs as responsibilities[].
+   Example: "I want AI to fully operate as my agent to receive and analyze
+   incoming referrals" → extract as a responsibility.
+
+4. INFER REQUIREMENTS FROM DELIVERABLE COMPLEXITY.
+   If the post describes a complex deliverable but lists no explicit
+   candidate requirements, extract implicit technical requirements into
+   requirements[]. For example, if the deliverable involves "RAG retrieval
+   tuning" and "Supabase pgvector", the requirements are RAG experience
+   and SQL/Postgres knowledge.
+   Add a warning: "requirements_inferred_from_scope" when doing this.
+
+5. SCREENING QUESTIONS AND APPLICATION INSTRUCTIONS.
+   Many freelance posts embed screening criteria in prose (e.g., "I'd like
+   a screenshot of your environment", "must include 1-2 similar RAG projects").
+   Extract these into details.screening_questions[].
+
+6. CLIENT SOPHISTICATION SIGNAL.
+   If the client's language clearly indicates technical depth (references
+   specific tools, architecture patterns, evaluation methods), note this
+   in responsibilities[] or requirements[] as extracted — do NOT invent
+   a field that doesn't exist in the schema.
+
+7. HOURLY RATE / BUDGET EXTRACTION.
+   Freelance posts often state rates inline (e.g., "$20/h", "$30-$45/h",
+   "$50h+"). Extract into details.hourly_rate and/or details.budget.
+   If both a probationary and post-probationary rate are stated, capture
+   both in details.hourly_rate (e.g., "$20/h probationary, $30-$45/h post").
+
+8. PLATFORM FIELD.
+   If the source platform is not identifiable from the text, leave
+   details.platform as null. Do NOT guess the platform.
+"""
+
 EXTRACTOR_USER_TEMPLATE = """
 Posting kind (already classified): {kind}
-
+{kind_guidance}
 Job posting text:
 {text}
 """
+
+
+def get_kind_guidance(kind: str) -> str:
+    """Return kind-specific extraction guidance or empty string."""
+    if kind == "freelance":
+        return _FREELANCE_EXTRACTION_GUIDANCE
+    return ""
 
 
 # ---------------------------------------------------------------------------

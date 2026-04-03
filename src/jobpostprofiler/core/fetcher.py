@@ -104,6 +104,7 @@ _PLATFORM_MAP = [
     ("workday.com", "workday"),
     ("smartrecruiters.com", "smartrecruiters"),
     ("icims.com", "icims"),
+    ("upwork.com", "upwork"),
 ]
 
 

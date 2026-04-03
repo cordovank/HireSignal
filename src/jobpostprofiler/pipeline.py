@@ -24,7 +24,7 @@ from jobpostprofiler.core.classifier import classify_kind
 from jobpostprofiler.core.renderer import render_markdown
 from jobpostprofiler.core.skill_match import compute_match, MatchResult
 from jobpostprofiler.llm.client import get_client, structured_call
-from jobpostprofiler.llm.prompts import EXTRACTOR_SYSTEM, EXTRACTOR_USER_TEMPLATE, QA_SYSTEM, QA_USER_TEMPLATE
+from jobpostprofiler.llm.prompts import EXTRACTOR_SYSTEM, EXTRACTOR_USER_TEMPLATE, QA_SYSTEM, QA_USER_TEMPLATE, get_kind_guidance
 from jobpostprofiler.models.job_models import PostingExtract, Source
 from jobpostprofiler.models.qa_models import QAReport
 
@@ -123,8 +123,9 @@ def run_pipeline(
     )
 
     user_msg = EXTRACTOR_USER_TEMPLATE.format(
-        kind=kind, 
-        text=fetch_result.text
+        kind=kind,
+        kind_guidance=get_kind_guidance(kind),
+        text=fetch_result.text,
     )
     # Exclude computed field 'ref' so the LLM doesn't echo it back
     source_json = source.model_dump_json(indent=2, exclude={"ref"})
