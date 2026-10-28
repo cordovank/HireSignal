@@ -103,51 +103,70 @@ The following fields were absent from the posting:
 FREELANCE_TEMPLATE = """\
 # {{ title_line }}
 
-## Gig Details
-| Field | Value |
-|---|---|
-| Platform | {{ details.platform or "Not stated" }} |
-| Contract Type | {{ details.contract_type or "Not stated" }} |
-| Budget | {{ details.budget or "Not stated" }} |
-| Hourly Rate | {{ details.hourly_rate or "Not stated" }} |
-| Duration | {{ details.duration or "Not stated" }} |
-| Weekly Hours | {{ details.weekly_hours or "Not stated" }} |
-| Experience Level | {{ details.experience_level or "Not stated" }} |
-| Proposals | {{ details.proposals or "Not stated" }} |
+## Compensation
+{% set comp_parts = [] %}
+{% if details.hourly_rate %}{% set _ = comp_parts.append(details.hourly_rate) %}{% endif %}
+{% if details.budget %}{% set _ = comp_parts.append("Budget: " ~ details.budget) %}{% endif %}
+{% if details.contract_type %}{% set _ = comp_parts.append(details.contract_type) %}{% endif %}
+{% if details.duration %}{% set _ = comp_parts.append(details.duration) %}{% endif %}
+{% if details.weekly_hours %}{% set _ = comp_parts.append(details.weekly_hours) %}{% endif %}
+{% if details.experience_level %}{% set _ = comp_parts.append(details.experience_level) %}{% endif %}
+{% if comp_parts %}
+{{ comp_parts | join("  ·  ") }}
+{% else %}
+Not stated
+{% endif %}
 
-## Client Info
-| Field | Value |
-|---|---|
-| Location | {{ details.client.location or "Not stated" }} |
-| Payment Verified | {{ details.client.payment_verified if details.client.payment_verified is not none else "Not stated" }} |
-| Total Spend | {{ details.client.total_spend or "Not stated" }} |
-| Hire Rate | {{ details.client.hire_rate or "Not stated" }} |
-| Jobs Posted | {{ details.client.jobs_posted or "Not stated" }} |
-
-## Responsibilities
+## What They Need Built
+{% if responsibilities %}
 {% for r in responsibilities %}
 - {{ r }}
-{% else %}
-- Not stated
 {% endfor %}
+{% else %}
+Not described
+{% endif %}
 
-## Requirements
+## Technical Requirements
+{% if requirements or skills.required %}
 {% for r in requirements %}
 - {{ r }}
-{% else %}
-- Not stated
 {% endfor %}
-
-## Skills
-**Required:** {% if skills.required %}{{ skills.required | join(", ") }}{% else %}Not stated{% endif %}
-
-**Preferred:** {% if skills.preferred %}{{ skills.preferred | join(", ") }}{% else %}Not stated{% endif %}
+{% if skills.required %}
+**Skills:** {{ skills.required | join(", ") }}
+{% endif %}
+{% else %}
+Not specified
+{% endif %}
 
 {% if details.screening_questions %}
-## Screening Questions
+## Application Requirements
 {% for q in details.screening_questions %}
 - {{ q }}
 {% endfor %}
+{% endif %}
+
+{% if preferred_qualifications or skills.preferred %}
+## Preferred Qualifications
+{% for p in preferred_qualifications %}
+- {{ p }}
+{% endfor %}
+{% if skills.preferred %}
+**Preferred skills:** {{ skills.preferred | join(", ") }}
+{% endif %}
+{% endif %}
+
+{% if details.client.location or details.client.payment_verified is not none or details.client.total_spend or details.client.hire_rate or details.client.jobs_posted or details.platform or details.proposals or details.activity %}
+## Client Info
+{% set client_parts = [] %}
+{% if details.platform %}{% set _ = client_parts.append("Platform: " ~ details.platform) %}{% endif %}
+{% if details.client.location %}{% set _ = client_parts.append("Location: " ~ details.client.location) %}{% endif %}
+{% if details.client.payment_verified is not none %}{% set _ = client_parts.append("Payment verified: " ~ details.client.payment_verified) %}{% endif %}
+{% if details.client.total_spend %}{% set _ = client_parts.append("Total spend: " ~ details.client.total_spend) %}{% endif %}
+{% if details.client.hire_rate %}{% set _ = client_parts.append("Hire rate: " ~ details.client.hire_rate) %}{% endif %}
+{% if details.client.jobs_posted %}{% set _ = client_parts.append("Jobs posted: " ~ details.client.jobs_posted) %}{% endif %}
+{% if details.proposals %}{% set _ = client_parts.append("Proposals: " ~ details.proposals) %}{% endif %}
+{% if details.activity %}{% set _ = client_parts.append("Activity: " ~ details.activity) %}{% endif %}
+{{ client_parts | join("  ·  ") }}
 {% endif %}
 
 {% if warnings %}

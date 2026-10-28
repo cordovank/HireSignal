@@ -64,10 +64,18 @@ def _fmt_row(j: dict) -> str:
     remote = f"  {j['remote_policy']}" if j.get("remote_policy") else ""
     qa = "✓" if j.get("qa_passed") else "⚠"
     match = f"  Match:{j['match_score']:.0%}" if j.get("match_score") is not None else ""
+
+    co = j.get("company") or ""
+    title = j.get("title") or "Unknown"
+
+    if co:
+        name_col = f"{co:<25} {title:<35}"
+    else:
+        name_col = f"{'[gig]':<25} {title:<35}"
+
     return (
         f"  [{j['id']:>3}] {emoji} {j['status']:<14} "
-        f"{(j.get('company') or 'Unknown'):<25} "
-        f"{(j.get('title') or 'Unknown'):<35} "
+        f"{name_col}"
         f"{j.get('date_found','')}{salary}{remote}  QA:{qa}{match}"
     )
 
@@ -99,15 +107,44 @@ def cmd_show(args):
         print(f"Job id={args.job_id} not found.")
         return
 
+    # Parse stored extract early — needed for kind detection and detail fields
+    raw_extract = job.get("extract_json") or ""
+    extract_json = None
+    if raw_extract:
+        try:
+            extract_json = json.loads(raw_extract)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    kind = "employment"
+    if isinstance(extract_json, dict):
+        kind = extract_json.get("details", {}).get("kind", "employment")
+
     emoji = STATUS_EMOJI.get(job["status"], "•")
     print(f"\n{'='*70}")
     print(f"  {emoji} Job #{job['id']}  —  {job.get('title') or 'Unknown'}")
     print(f"{'='*70}")
-    print(f"  Company:         {job.get('company') or 'Unknown'}")
-    print(f"  Location:        {job.get('location') or 'Not stated'}")
-    print(f"  Remote policy:   {job.get('remote_policy') or 'Not stated'}")
-    print(f"  Employment type: {job.get('employment_type') or 'Not stated'}")
-    print(f"  Salary range:    {job.get('salary_range') or 'Not stated'}")
+
+    if kind == "freelance":
+        fl_details = extract_json.get("details", {}) if extract_json else {}
+        if fl_details.get("platform"):
+            print(f"  Platform:        {fl_details['platform']}")
+        print(f"  Rate:            {job.get('salary_range') or 'Not stated'}")
+        if fl_details.get("duration"):
+            print(f"  Duration:        {fl_details['duration']}")
+        if fl_details.get("contract_type"):
+            print(f"  Contract:        {fl_details['contract_type']}")
+        if fl_details.get("weekly_hours"):
+            print(f"  Weekly hours:    {fl_details['weekly_hours']}")
+        if fl_details.get("experience_level"):
+            print(f"  Experience:      {fl_details['experience_level']}")
+    else:
+        print(f"  Company:         {job.get('company') or 'Unknown'}")
+        print(f"  Location:        {job.get('location') or 'Not stated'}")
+        print(f"  Remote policy:   {job.get('remote_policy') or 'Not stated'}")
+        print(f"  Employment type: {job.get('employment_type') or 'Not stated'}")
+        print(f"  Salary range:    {job.get('salary_range') or 'Not stated'}")
+
     print(f"  Status:          {job['status']}")
     print(f"  Date found:      {job.get('date_found', '')}")
     print(f"  Source channel:  {job.get('source_channel', '')}")
@@ -124,14 +161,18 @@ def cmd_show(args):
     if pref:
         print(f"  Preferred skills:{', '.join(pref)}")
 
-    # Parse stored extract for soft_skills
-    raw_extract = job.get("extract_json") or ""
-    extract_json = None
-    if raw_extract:
-        try:
-            extract_json = json.loads(raw_extract)
-        except (json.JSONDecodeError, TypeError):
-            pass
+    # Freelance-specific: scope preview and screening count
+    if kind == "freelance" and extract_json:
+        responsibilities = extract_json.get("responsibilities", [])
+        if responsibilities:
+            preview = " · ".join(responsibilities[:3])
+            if len(responsibilities) > 3:
+                preview += f" (+{len(responsibilities) - 3} more)"
+            print(f"  Scope:           {preview}")
+        screening = extract_json.get("details", {}).get("screening_questions", [])
+        if screening:
+            print(f"  Screening:       {len(screening)} question(s)")
+
     soft = extract_json.get("soft_skills", []) if isinstance(extract_json, dict) else []
 
     if job.get("match_score") is not None:

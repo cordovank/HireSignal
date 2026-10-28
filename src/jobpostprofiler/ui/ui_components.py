@@ -78,18 +78,28 @@ def render_outputs(
         return
 
     details = extract_json.get("details", {})
+    kind = details.get("kind", "employment") if isinstance(details, dict) else "employment"
     role     = details.get("role", {}) if isinstance(details, dict) else {}
     company  = details.get("company", {}) if isinstance(details, dict) else {}
     skills   = extract_json.get("skills", {})
 
-    title    = role.get("job_title") or extract_json.get("title") or "Unknown role"
-    co_name  = company.get("name") or "Unknown company"
-    location = role.get("location") or "Location not stated"
-    emp_type = role.get("employment_type") or ""
-    comp     = role.get("compensation") or ""
+    if kind == "freelance":
+        title = details.get("title") or "Untitled gig"
+        meta_parts = [p for p in [
+            details.get("platform"),
+            details.get("hourly_rate") or details.get("budget"),
+            details.get("contract_type"),
+            details.get("duration"),
+        ] if p]
+    else:
+        title    = role.get("job_title") or extract_json.get("title") or "Unknown role"
+        co_name  = company.get("name") or "Unknown company"
+        location = role.get("location") or "Location not stated"
+        emp_type = role.get("employment_type") or ""
+        comp     = role.get("compensation") or ""
+        meta_parts = [p for p in [co_name, location, emp_type, comp] if p]
 
-    meta_parts = [p for p in [co_name, location, emp_type, comp] if p]
-    meta_str   = "  ·  ".join(html_escape(p) for p in meta_parts)
+    meta_str = "  ·  ".join(html_escape(p) for p in meta_parts)
 
     # Job header
     st.html(f"""
@@ -112,19 +122,29 @@ def render_outputs(
     preferred        = extract_json.get("preferred_qualifications", [])
     pref_skills      = skills.get("preferred", []) if isinstance(skills, dict) else []
 
-    with st.expander(f"Responsibilities  ({len(responsibilities)})", expanded=False):
+    resp_label = "What They Need Built" if kind == "freelance" else "Responsibilities"
+    req_label  = "Technical Requirements" if kind == "freelance" else "Requirements"
+
+    with st.expander(f"{resp_label}  ({len(responsibilities)})", expanded=False):
         if responsibilities:
             for item in responsibilities:
                 st.markdown(f"- {item}")
         else:
             st.caption("None extracted.")
 
-    with st.expander(f"Requirements  ({len(requirements)})", expanded=False):
+    with st.expander(f"{req_label}  ({len(requirements)})", expanded=False):
         if requirements:
             for item in requirements:
                 st.markdown(f"- {item}")
         else:
             st.caption("None extracted.")
+
+    if kind == "freelance":
+        screening = details.get("screening_questions", []) if isinstance(details, dict) else []
+        if screening:
+            with st.expander(f"Application Requirements  ({len(screening)})", expanded=False):
+                for item in screening:
+                    st.markdown(f"- {item}")
 
     with st.expander(f"Preferred  ({len(preferred) + len(pref_skills)})", expanded=False):
         if preferred:
@@ -281,6 +301,18 @@ def _render_job_detail(job: Dict[str, Any]) -> None:
                     render_match_score(match_result, qa_json=qa_json)
             except Exception:
                 pass
+
+    # Freelance scope preview
+    if extract_json:
+        kind = extract_json.get("details", {}).get("kind", "employment")
+        if kind == "freelance":
+            responsibilities = extract_json.get("responsibilities", [])
+            if responsibilities:
+                preview_items = responsibilities[:3]
+                preview_text = " · ".join(preview_items)
+                if len(responsibilities) > 3:
+                    preview_text += f" (+{len(responsibilities) - 3} more)"
+                st.caption(f"Scope: {preview_text}")
 
     render_outputs(
         summary_md=job.get("markdown_rendered"),
